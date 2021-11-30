@@ -1,44 +1,59 @@
 version: '3'
 
+networks:
+  my_server:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
 services:
 
   nginx:
     container_name: nginx
     image:  "nginx:${nginx_version}"
+    networks:
+      my_server:
+        ipv4_address: 172.20.0.5
     ports:
       - ${nginx_port}:80
     
+  nginx_prometheus_exporter:
+    container_name: nginx_exporter
+    image:  "fish/nginx-exporter:${nginx_exporter_version}"
+    networks:
+      my_server:
+        ipv4_address: 172.20.0.6
+    ports:
+      - ${nginx_exporter_port}:9113
+    command:
+      - '-nginx.scrape_uri=http://172.20.0.5:80/'
+    depends_on:
+      - nginx
+
+
   prometheus:
     container_name: prometheus
     image: "prom/prometheus:${promethues_version}"
+    networks:
+      my_server:
+        ipv4_address: 172.20.0.7
     ports:
     - ${promethues_port}:9090
     command:
     - --config.file=/etc/prometheus/prometheus.yml
     volumes:
-    - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    links:
-      - cadvisor:cadvisor
-      - alertmanager:alertmanager
+    - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     depends_on:
-    - cadvisor
+      - nginx
+      - nginx_exporter
     
-  cadvisor:
-    container_name: CA-Advisor
-    image: "gcr.io/google-containers/cadvisor:${ca_advisor_version}"
-    ports:
-    - ${ca_advisor_port}:8080
-    volumes:
-    - /:/rootfs:ro
-    - /var/run:/var/run:rw
-    - /sys:/sys:ro
-    - /var/lib/docker/:/var/lib/docker:ro
-    depends_on:
-    - nginx
 
   alertmanager:
     container_name: Alert-Manager
     image: "prom/alertmanager:${alert_manager_version}"
+    networks:
+      my_server:
+        ipv4_address: 172.20.0.8
     ports:
       - ${alert_manager_port}:9093
     volumes:
@@ -47,5 +62,5 @@ services:
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
-
-  
+    depends_on:
+      - prometheus
