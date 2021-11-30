@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+
+  nginx:
+    container_name: nginx
+    image:  "nginx:${nginx_version}"
+    ports:
+      - ${nginx_port}:80
+    
+  prometheus:
+    container_name: prometheus
+    image: "prom/prometheus:${promethues_version}"
+    ports:
+    - ${promethues_port}:9090
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+    - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    links:
+      - cadvisor:cadvisor
+      - alertmanager:alertmanager
+    depends_on:
+    - cadvisor
+    
+  cadvisor:
+    container_name: CA-Advisor
+    image: "gcr.io/google-containers/cadvisor:${ca_advisor_version}"
+    ports:
+    - ${ca_advisor_port}:8080
+    volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:rw
+    - /sys:/sys:ro
+    - /var/lib/docker/:/var/lib/docker:ro
+    depends_on:
+    - nginx
+
+  alertmanager:
+    container_name: Alert-Manager
+    image: "prom/alertmanager:${alert_manager_version}"
+    ports:
+      - ${alert_manager_port}:9093
+    volumes:
+      - ./alertmanager/:/etc/alertmanager/
+    restart: always
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+
+  
