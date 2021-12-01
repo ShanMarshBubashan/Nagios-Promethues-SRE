@@ -4,7 +4,7 @@ networks:
   my_server:
     ipam:
       config:
-        - subnet: 172.20.0.0/24
+        - subnet: ${subnet}
 
 services:
 
@@ -13,7 +13,7 @@ services:
     image:  "nginx:${nginx_version}"
     networks:
       my_server:
-        ipv4_address: 172.20.0.5
+        ipv4_address: ${nginx_ip}
     ports:
       - ${nginx_port}:80
     
@@ -22,11 +22,11 @@ services:
     image:  "fish/nginx-exporter:${nginx_exporter_version}"
     networks:
       my_server:
-        ipv4_address: 172.20.0.6
+        ipv4_address: ${nginx_exporter_ip}
     ports:
       - ${nginx_exporter_port}:9113
     command:
-      - '-nginx.scrape_uri=http://172.20.0.5:80/'
+      - '-nginx.scrape_uri=http://${nginx_ip}:80/'
     depends_on:
       - nginx
 
@@ -36,31 +36,30 @@ services:
     image: "prom/prometheus:${promethues_version}"
     networks:
       my_server:
-        ipv4_address: 172.20.0.7
+        ipv4_address: ${promethues_ip}
     ports:
     - ${promethues_port}:9090
     command:
     - --config.file=/etc/prometheus/prometheus.yml
     volumes:
     - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    - ./prometheus/alert.rules:/etc/prometheus/alert.rules
     depends_on:
       - nginx
       - nginx_exporter
     
 
   alertmanager:
-    container_name: Alert-Manager
+    container_name: alertmanager
     image: "prom/alertmanager:${alert_manager_version}"
     networks:
       my_server:
-        ipv4_address: 172.20.0.8
+        ipv4_address: ${alert_manager_ip}
     ports:
       - ${alert_manager_port}:9093
     volumes:
-      - ./alertmanager/:/etc/alertmanager/
+      - "./alertmanager:/config"
     restart: always
-    command:
-      - '--config.file=/etc/alertmanager/config.yml'
-      - '--storage.path=/alertmanager'
+    command: --config.file=/config/config.yml --log.level=debug
     depends_on:
       - prometheus

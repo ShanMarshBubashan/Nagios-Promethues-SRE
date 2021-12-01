@@ -1,0 +1,15 @@
+groups:
+  - name: Alerts
+
+    rules:
+      
+      - alert: InstanceDown 
+        # Enabling below line will fire alert when instance up, for testing purpose
+        # expr: nginx_up == 1  
+        expr: nginx_up == 0
+        for: 30s
+        labels:
+          severity: "critical"
+        annotations:
+          summary: "Endpoint {{ $labels.instance }} down"
+          
